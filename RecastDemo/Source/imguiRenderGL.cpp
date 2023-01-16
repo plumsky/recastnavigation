@@ -465,10 +465,13 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 
             if (utf8l == 0) {
                 // draw this word
+				if (unicode < CHINESE_START) {
+					continue;
+				}
                 auto index = (unicode - CHINESE_START) / CHINESE_PAGE;
                 
                 stbtt_aligned_quad q;
-                getBakedQuad(g_unicode[index], 1024,1024, CHINESE_PAGE - (unicode - CHINESE_START), &x,&y,&q);
+                getBakedQuad(g_unicode[index], 1024,1024, CHINESE_PAGE - (unicode - CHINESE_START - index* CHINESE_PAGE), &x,&y,&q);
                 
                 glTexCoord2f(q.s0, q.t0);
                 glVertex2f(q.x0, q.y0);
