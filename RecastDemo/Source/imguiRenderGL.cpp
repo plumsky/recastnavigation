@@ -53,6 +53,13 @@ static float g_circleVerts[CIRCLE_VERTS*2];
 static stbtt_bakedchar g_cdata[96]; // ASCII 32..126 is 95 glyphs
 static GLuint g_ftex = 0;
 
+static const unsigned CHINESE_START = 0x4E00;
+static const unsigned CHINESE_COUNT = 0x9FA5 - 0x4E00;
+static const unsigned char CHINESE_FTEX_SIZE = 4;
+static stbtt_bakedchar g_unicode[CHINESE_FTEX_SIZE][CHINESE_COUNT];
+static const unsigned CHINESE_PAGE = CHINESE_COUNT / CHINESE_FTEX_SIZE;
+static GLuint g_chineseFtex[CHINESE_FTEX_SIZE] = {};
+
 inline unsigned int RGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
 {
 	return (r) | (g << 8) | (b << 16) | (a << 24);
@@ -295,9 +302,26 @@ bool imguiRenderGLInit(const char* fontpath)
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, bmap);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    unsigned char* cbmap = (unsigned char*)malloc(1024*1024);
+    if (!cbmap) {
+        free(bmap);
+        free(ttfBuffer);
+        return false;
+    }
+    for (int i = 0; i < CHINESE_FTEX_SIZE; ++i) {
+        stbtt_BakeFontBitmap(ttfBuffer, 0, 15.0f, cbmap, 1024, 1024, CHINESE_START + CHINESE_PAGE * i, CHINESE_PAGE, g_unicode[i]);
+        
+        glGenTextures(1, &g_chineseFtex[i]);
+        glBindTexture(GL_TEXTURE_2D, g_chineseFtex[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 1024,1024, 0, GL_ALPHA, GL_UNSIGNED_BYTE, cbmap);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
 
 	free(ttfBuffer);
 	free(bmap);
+    free(cbmap);
 
 	return true;
 }
@@ -358,6 +382,9 @@ static float getTextLength(stbtt_bakedchar *chardata, const char* text)
 			len = round_x + b->x1 - b->x0 + 0.5f;
 			xpos += b->xadvance;
 		}
+        else if (c >= 128) {
+            
+        }
 		++text;
 	}
 	return len;
@@ -383,6 +410,9 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 	glBegin(GL_TRIANGLES);
 	
 	const float ox = x;
+    
+    unsigned char utf8l = 0;
+    int unicode = 0;
 	
 	while (*text)
 	{
@@ -417,6 +447,44 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 			glTexCoord2f(q.s1, q.t1);
 			glVertex2f(q.x1, q.y1);
 		}
+        else if (c & 0x80){
+            // utf8
+            if (c > 0xf0) {
+                utf8l = 3;
+                unicode = (c&0x1f) << 18;
+            } else if (c > 0xe0) {
+                utf8l = 2;
+                unicode = (c&0x0f) << 12;
+            } else if (c > 0xc0) {
+                utf8l = 1;
+                unicode = (c&0x07) << 6;
+            } else {
+                utf8l--;
+                unicode += ((c&0x3f)<<utf8l*6);
+            }
+
+            if (utf8l == 0) {
+                // draw this word
+                auto index = (unicode - CHINESE_START) / CHINESE_PAGE;
+                
+                stbtt_aligned_quad q;
+                getBakedQuad(g_unicode[index], 1024,1024, CHINESE_PAGE - (unicode - CHINESE_START), &x,&y,&q);
+                
+                glTexCoord2f(q.s0, q.t0);
+                glVertex2f(q.x0, q.y0);
+                glTexCoord2f(q.s1, q.t1);
+                glVertex2f(q.x1, q.y1);
+                glTexCoord2f(q.s1, q.t0);
+                glVertex2f(q.x1, q.y0);
+                
+                glTexCoord2f(q.s0, q.t0);
+                glVertex2f(q.x0, q.y0);
+                glTexCoord2f(q.s0, q.t1);
+                glVertex2f(q.x0, q.y1);
+                glTexCoord2f(q.s1, q.t1);
+                glVertex2f(q.x1, q.y1);
+            }
+        }
 		++text;
 	}
 	

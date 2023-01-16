@@ -127,7 +127,7 @@ int main(int /*argc*/, char** /*argv*/)
 
 	SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
-	if (!imguiRenderGLInit("DroidSans.ttf"))
+	if (!imguiRenderGLInit("ArialUnicode.ttf"))
 	{
 		printf("Could not init GUI renderer.\n");
 		SDL_Quit();
@@ -524,7 +524,7 @@ int main(int /*argc*/, char** /*argv*/)
 			if (imguiBeginScrollArea("Properties", width-250-10, 10, 250, height-20, &propScroll))
 				mouseOverMenu = true;
 
-			if (imguiCheck("Show Log", showLog))
+			if (imguiCheck("Show是不显示还是颜色不对Log", showLog))
 				showLog = !showLog;
 			if (imguiCheck("Show Tools", showTools))
 				showTools = !showTools;
@@ -878,7 +878,7 @@ int main(int /*argc*/, char** /*argv*/)
 		// Left column tools menu
 		if (!showTestCases && showTools && showMenu) // && geom && sample)
 		{
-			if (imguiBeginScrollArea("Tools", 10, 10, 250, height - 20, &toolsScroll))
+			if (imguiBeginScrollArea(u8"Tools工具", 10, 10, 250, height - 20, &toolsScroll))
 				mouseOverMenu = true;
 
 			if (sample)
