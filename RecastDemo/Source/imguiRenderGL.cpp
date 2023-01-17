@@ -18,6 +18,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <iostream>
 #include "imgui.h"
 #include "SDL.h"
 #include "SDL_opengl.h"
@@ -357,10 +358,13 @@ static void getBakedQuad(stbtt_bakedchar *chardata, int pw, int ph, int char_ind
 
 static const float g_tabStops[4] = {150, 210, 270, 330};
 
-static float getTextLength(stbtt_bakedchar *chardata, const char* text)
+static float getTextLength(const char* text)
 {
 	float xpos = 0;
 	float len = 0;
+    
+    unsigned char utf8l = 0;
+    unsigned unicode = 0;
 	while (*text)
 	{
 		int c = (unsigned char)*text;
@@ -377,13 +381,39 @@ static float getTextLength(stbtt_bakedchar *chardata, const char* text)
 		}
 		else if (c >= 32 && c < 128)
 		{
-			stbtt_bakedchar *b = chardata + c-32;
+			stbtt_bakedchar *b = g_cdata + c-32;
 			int round_x = STBTT_ifloor((xpos + b->xoff) + 0.5);
 			len = round_x + b->x1 - b->x0 + 0.5f;
 			xpos += b->xadvance;
 		}
-        else if (c >= 128) {
+        else if (c & 0x80){
+            // utf8
+            if (c > 0xf0) {
+                utf8l = 3;
+                unicode = (c&0x1f) << 18;
+            } else if (c > 0xe0) {
+                utf8l = 2;
+                unicode = (c&0x0f) << 12;
+            } else if (c > 0xc0) {
+                utf8l = 1;
+                unicode = (c&0x07) << 6;
+            } else {
+                utf8l--;
+                unicode += ((c&0x3f)<<utf8l*6);
+            }
             
+            if (utf8l == 0) {
+                // draw this word
+                if (unicode < CHINESE_START) {
+                    continue;
+                }
+                auto index = (unicode - CHINESE_START) / CHINESE_PAGE;
+                
+                stbtt_bakedchar *b = g_unicode[index] + CHINESE_PAGE - (unicode - CHINESE_START - index* CHINESE_PAGE);
+                int round_x = STBTT_ifloor((xpos + b->xoff) + 0.5);
+                len = round_x + b->x1 - b->x0 + 0.5f;
+                xpos += b->xadvance;
+            }
         }
 		++text;
 	}
@@ -396,9 +426,9 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 	if (!text) return;
 	
 	if (align == IMGUI_ALIGN_CENTER)
-		x -= getTextLength(g_cdata, text)/2;
+		x -= getTextLength(text)/2;
 	else if (align == IMGUI_ALIGN_RIGHT)
-		x -= getTextLength(g_cdata, text);
+		x -= getTextLength(text);
 	
 	glColor4ub(col&0xff, (col>>8)&0xff, (col>>16)&0xff, (col>>24)&0xff);
 	
@@ -412,7 +442,7 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 	const float ox = x;
     
     unsigned char utf8l = 0;
-    int unicode = 0;
+    unsigned unicode = 0;
 	
 	while (*text)
 	{
@@ -466,6 +496,7 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
             if (utf8l == 0) {
                 // draw this word
 				if (unicode < CHINESE_START) {
+                    std::cout << unicode << std::endl;
 					continue;
 				}
                 auto index = (unicode - CHINESE_START) / CHINESE_PAGE;
