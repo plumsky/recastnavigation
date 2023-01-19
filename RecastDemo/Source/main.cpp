@@ -48,6 +48,8 @@
 #	define putenv _putenv
 #endif
 
+#include <iostream>
+
 using std::string;
 using std::vector;
 
@@ -124,6 +126,11 @@ int main(int /*argc*/, char** /*argv*/)
 		printf("Could not initialise SDL opengl\nError: %s\n", SDL_GetError());
 		return -1;
 	}
+    
+    SDL_RendererInfo info;
+    SDL_GetRendererInfo(renderer, &info);
+    
+    std::cout << info.name << std::endl;
 
 	SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
@@ -524,7 +531,7 @@ int main(int /*argc*/, char** /*argv*/)
 			if (imguiBeginScrollArea("Properties", width-250-10, 10, 250, height-20, &propScroll))
 				mouseOverMenu = true;
 
-			if (imguiCheck("Show是不显示还是颜色不对Log", showLog))
+			if (imguiCheck(u8"Show丁Log", showLog))
 				showLog = !showLog;
 			if (imguiCheck("Show Tools", showTools))
 				showTools = !showTools;

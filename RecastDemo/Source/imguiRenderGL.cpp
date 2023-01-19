@@ -432,13 +432,6 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 	
 	glColor4ub(col&0xff, (col>>8)&0xff, (col>>16)&0xff, (col>>24)&0xff);
 	
-	glEnable(GL_TEXTURE_2D);
-	
-	// assume orthographic projection with units = screen pixels, origin at top left
-	glBindTexture(GL_TEXTURE_2D, g_ftex);
-	
-	glBegin(GL_TRIANGLES);
-	
 	const float ox = x;
     
     unsigned char utf8l = 0;
@@ -459,7 +452,15 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 			}
 		}
 		else if (c >= 32 && c < 128)
-		{			
+		{
+            
+            glEnable(GL_TEXTURE_2D);
+            
+            // assume orthographic projection with units = screen pixels, origin at top left
+            glBindTexture(GL_TEXTURE_2D, g_ftex);
+            
+            glBegin(GL_TRIANGLES);
+            
 			stbtt_aligned_quad q;
 			getBakedQuad(g_cdata, 512,512, c-32, &x,&y,&q);
 			
@@ -500,6 +501,10 @@ static void drawText(float x, float y, const char *text, int align, unsigned int
 					continue;
 				}
                 auto index = (unicode - CHINESE_START) / CHINESE_PAGE;
+                
+                glEnable(GL_TEXTURE_2D);
+                glBindTexture(GL_TEXTURE_2D, g_chineseFtex[index]);
+                glBegin(GL_TRIANGLES);
                 
                 stbtt_aligned_quad q;
                 getBakedQuad(g_unicode[index], 1024,1024, CHINESE_PAGE - (unicode - CHINESE_START - index* CHINESE_PAGE), &x,&y,&q);
